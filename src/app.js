@@ -1,39 +1,64 @@
-import { convertDate } from "./utils";
+import {
+  getLocation,
+  getWeather,
+  convertEpochDate,
+  createTempString
+} from "./utils";
 
-const Http = new XMLHttpRequest();
-const baseLocationUrl = 'https://se-weather-api.herokuapp.com/api/v1/geo';
-const baseWeatherUrl = 'https://se-weather-api.herokuapp.com/api/v1/forecast';
+function renderHeader(city) {
+  const app = document.getElementById('app');
 
-// I really want to type this zipCode variable to be a string;
-const locationData = zipCode => {
-  const url = baseLocationUrl + `?zip_code=${zipCode}`;
-  Http.open("GET", url);
-  Http.send()
+  const newElement = document.createElement('h1');
+  newElement.setAttribute("id", "header");
+  newElement.innerHTML = `Weather Forecast for ${city}`;
 
-  // Should check state of request
-  return Http.onreadystatechange = e => {
-    console.log(JSON.parse(Http.responseText));
+  app.appendChild(newElement);
+}
+
+function renderDays(days) {
+  const header = document.getElementById('header');
+
+  return days.forEach(day => {
+    const date = convertEpochDate(day.time);
+    const temperature = createTempString(day.temperatureHigh, day.temperatureLow);
+
+    const element = document.createElement('div');
+    element.classList.add('date');
+
+    header.append(element);
+
+    const weather = document.createElement('p');
+    weather.style.fontSize = "18px";
+    weather.innerHTML = `${date}<br>\
+    ${day.summary}<br>\
+    ${temperature}`;
+
+    element.append(weather);
+  })
+}
+
+async function getData(zipCode) {
+  try {
+    const locationData = await getLocation(zipCode);
+    const weatherData = await getWeather(locationData.latitude, locationData.longitude);
+
+    renderHeader(locationData.city);
+    renderDays(weatherData.daily.data);
+  } catch (error) {
+    console.log(error);
   }
 }
 
-const location = locationData('90210');
+getData("90210")
 
-const weatherData = (location) => {
-  const date = new Date().toLocaleDateString();
-  const {latitude, longitude} = location;
-  const url = baseWeatherUrl + `?latitude=${latitude}&longitude=${longitude}&date=${date}`;
-
-  Http.open("GET", url);
-  Http.send();
-
-  return Http.onreadystatechange = e => {
-    const data = JSON.parse(Http.responseText);
-    console.log(data)
-    // data.daily.data.forEach(element => {
-    //   document.write(`<p>${element}</p>`)
-    // });
-    document.write(`<p>${Http.responseText}</p>`)
-  }
-}
-
-const weather = weatherData(location);
+/*
+NEXT STEPS:
+- Create CSS file to add more styling
+- Update convertEpochDate function (or create a new function that uses it) to convert dates to Today/Tomorrow/Upcoming, etc
+- With these two steps, I would probably change the date class elements structure:
+  div -> for each date
+  div.children -> [Header for Today, div for icon and temp]
+  div.children -> [icon on left, div on right for description, temps]
+  div.children -> [description, tempteratures]
+- Create input on the browser to take in a zip code and rerender
+*/
